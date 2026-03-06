@@ -1,84 +1,64 @@
 /**
  * GET /api/youtube?keyword=&region=&window=
  *
- * Uses Invidious public API instances (keyless YouTube alternative).
- * Falls back through a list of known public instances.
+ * Uses ytsr (YouTube scraper, no API key required).
+ * Falls back gracefully if scraping fails.
  *
  * Returns normalized YouTubeItem[].
  */
 import { NextRequest, NextResponse } from "next/server";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ytsr = require("ytsr") as {
+  (query: string, options: { limit: number; safeSearch: boolean }): Promise<{
+    items: Array<{
+      type: string;
+      id?: string;
+      title?: string;
+      author?: { name?: string } | null;
+      uploadedAt?: string | null;
+      bestThumbnail?: { url?: string } | null;
+    }>;
+  }>;
+};
+
 import { buildCacheKey, getCached, getTtlForWindow, setCached } from "@/lib/cache";
 import { checkRateLimit, getIpFromRequest } from "@/lib/rateLimit";
 import { SearchParamsSchema } from "@/lib/schemas";
 import type { YouTubeItem } from "@/lib/types";
 
-// Public Invidious instances (in preference order)
-const INVIDIOUS_INSTANCES = [
-  "https://inv.tux.pizza",
-  "https://invidious.nerdvpn.de",
-  "https://invidious.privacydev.net",
-  "https://vid.puffyan.us",
-  "https://invidious.lunar.icu",
-];
-
-interface InvidiousVideo {
-  videoId: string;
-  title: string;
-  author: string;
-  authorId: string;
-  published: number; // Unix timestamp
-  videoThumbnails: Array<{ quality: string; url: string; width: number; height: number }>;
-  viewCount: number;
-  description?: string;
-}
-
-function selectThumbnail(thumbnails: InvidiousVideo["videoThumbnails"]): string {
-  const pref = ["medium", "high", "default", "sddefault", "maxresdefault"];
-  for (const quality of pref) {
-    const t = thumbnails.find((x) => x.quality === quality);
-    if (t?.url) return t.url;
-  }
-  return thumbnails[0]?.url ?? "";
-}
-
-async function fetchFromInstance(
-  instance: string,
-  keyword: string
-): Promise<YouTubeItem[]> {
-  const url = `${instance}/api/v1/search?q=${encodeURIComponent(keyword)}&type=video&sort_by=upload_date&page=1`;
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(10_000),
-    headers: { "User-Agent": "TrendDashboard/1.0" },
-  });
-
-  if (!res.ok) throw new Error(`Invidious ${instance} returned ${res.status}`);
-
-  const videos = (await res.json()) as InvidiousVideo[];
-  if (!Array.isArray(videos)) throw new Error("Unexpected response shape");
-
-  return videos
-    .filter((v) => v.videoId && v.title)
-    .slice(0, 15)
-    .map((v) => ({
-      videoId: v.videoId,
-      title: v.title,
-      channel: v.author ?? "Unknown",
-      publishedAt: new Date(v.published * 1000).toISOString(),
-      url: `https://www.youtube.com/watch?v=${v.videoId}`,
-      thumbnail: selectThumbnail(v.videoThumbnails ?? []),
-    }));
+/** Parse "6 months ago" / "3 years ago" etc. into a rough ISO timestamp */
+function parseYouTubeDate(raw: string | null | undefined): string {
+  if (!raw) return new Date().toISOString();
+  const now = Date.now();
+  const m = raw.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
+  if (!m) return new Date(now).toISOString();
+  const n = parseInt(m[1]);
+  const unit = m[2].toLowerCase();
+  const ms: Record<string, number> = {
+    second: 1_000,
+    minute: 60_000,
+    hour: 3_600_000,
+    day: 86_400_000,
+    week: 604_800_000,
+    month: 2_592_000_000,
+    year: 31_536_000_000,
+  };
+  return new Date(now - n * (ms[unit] ?? 0)).toISOString();
 }
 
 async function fetchYouTubeItems(keyword: string): Promise<YouTubeItem[]> {
-  for (const instance of INVIDIOUS_INSTANCES) {
-    try {
-      const items = await fetchFromInstance(instance, keyword);
-      if (items.length > 0) return items;
-    } catch (err) {
-      console.warn(`[/api/youtube] Instance ${instance} failed:`, err);
-    }
-  }
-  return [];
+  const result = await ytsr(keyword, { limit: 25, safeSearch: false });
+  return result.items
+    .filter((item) => item.type === "video" && item.id && item.title)
+    .slice(0, 15)
+    .map((item) => ({
+      videoId: item.id!,
+      title: item.title!,
+      channel: item.author?.name ?? "Unknown",
+      publishedAt: parseYouTubeDate(item.uploadedAt),
+      url: `https://www.youtube.com/watch?v=${item.id}`,
+      thumbnail: item.bestThumbnail?.url ?? "",
+    }));
 }
 
 export async function GET(req: NextRequest) {
@@ -100,6 +80,11 @@ export async function GET(req: NextRequest) {
   }
 
   const { keyword, region, window } = parse.data;
+
+  // Optionally localise query for German region
+  const regionSuffix: Record<string, string> = { germany: " DE", us: "", worldwide: "" };
+  const searchQuery = keyword + (regionSuffix[region] ?? "");
+
   const cacheKey = buildCacheKey("youtube", keyword, region, window);
   const ttl = getTtlForWindow(window);
 
@@ -108,16 +93,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
   }
 
-  // Optionally append region hint to query for better results
-  const regionHint: Record<string, string> = {
-    germany: " Deutschland",
-    us: "",
-    worldwide: "",
-  };
-  const searchKeyword = keyword + (regionHint[region] ?? "");
-
-  const items = await fetchYouTubeItems(searchKeyword);
-  setCached(cacheKey, items, ttl);
-
-  return NextResponse.json(items, { headers: { "X-Cache": "MISS" } });
+  try {
+    const items = await fetchYouTubeItems(searchQuery);
+    setCached(cacheKey, items, ttl);
+    return NextResponse.json(items, { headers: { "X-Cache": "MISS" } });
+  } catch (err) {
+    console.warn("[/api/youtube] ytsr failed:", err);
+    return NextResponse.json([], { status: 200 });
+  }
 }

@@ -6,6 +6,7 @@ Sentiment analysis service.
 Limitations (German): The lexicon is minimal (~150 words per polarity).
 For production, replace with TextBlob-DE or a HuggingFace transformer.
 """
+from __future__ import annotations
 from typing import Literal
 
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer

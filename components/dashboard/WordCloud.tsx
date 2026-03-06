@@ -29,6 +29,26 @@ const APPLE_PALETTE = [
   "#AF52DE", "#30D158", "#64D2FF", "#0A84FF",
 ];
 
+function estimateWidth(text: string, fontSize: number): number {
+  return text.length * fontSize * 0.58;
+}
+
+function overlaps(
+  x: number, y: number, w: number, h: number,
+  rects: Array<{ x: number; y: number; w: number; h: number }>
+): boolean {
+  const pad = 5;
+  for (const r of rects) {
+    if (
+      x < r.x + r.w + pad &&
+      x + w + pad > r.x &&
+      y < r.y + r.h + pad &&
+      y + h + pad > r.y
+    ) return true;
+  }
+  return false;
+}
+
 function computeLayout(
   terms: WordCloudTerm[],
   width: number,
@@ -38,70 +58,46 @@ function computeLayout(
   if (terms.length === 0) return [];
 
   const maxVal = Math.max(...terms.map((t) => t.value));
-  const minFont = 12;
-  const maxFont = 42;
+  const minFont = 11;
+  const maxFont = 52;
+  const cx = width / 2;
+  const cy = height / 2;
 
-  // Scale font sizes
-  const scaled = terms.slice(0, 40).map((t, i) => ({
+  const scaled = terms.slice(0, 50).map((t, i) => ({
     text: t.text,
     value: t.value,
-    fontSize: minFont + ((t.value / maxVal) * (maxFont - minFont)),
+    fontSize: Math.round(minFont + (t.value / maxVal) * (maxFont - minFont)),
     color: palette[i % palette.length],
   }));
 
-  // Simple row-based layout (no overlap detection — good enough for word clouds)
   const placed: PlacedWord[] = [];
-  const rows: Array<{ y: number; rightEdge: number; height: number }> = [];
-  const padding = 6;
-  const startY = 0;
-
-  // Estimate char width: ~0.55 * fontSize
-  function estimateWidth(text: string, fontSize: number): number {
-    return text.length * fontSize * 0.55;
-  }
+  const rects: Array<{ x: number; y: number; w: number; h: number }> = [];
 
   for (const word of scaled) {
     const ww = estimateWidth(word.text, word.fontSize);
-    const wh = word.fontSize * 1.2;
+    const wh = word.fontSize * 1.25;
 
-    // Find a row with enough space
-    let placed_ = false;
-    for (const row of rows) {
-      if (row.rightEdge + padding + ww <= width) {
-        placed.push({
-          ...word,
-          x: row.rightEdge + padding,
-          y: row.y,
-        });
-        row.rightEdge += padding + ww;
-        placed_ = true;
+    // Archimedean spiral outward from center
+    const maxSteps = 800;
+    let didPlace = false;
+
+    for (let step = 0; step < maxSteps; step++) {
+      const theta = step * 0.18;
+      const r = 2.2 * theta;
+      const px = cx + r * Math.cos(theta) - ww / 2;
+      const py = cy + r * Math.sin(theta) - wh / 2;
+
+      if (px < 2 || px + ww > width - 2 || py < 2 || py + wh > height - 2) continue;
+
+      if (!overlaps(px, py, ww, wh, rects)) {
+        placed.push({ ...word, x: px, y: py });
+        rects.push({ x: px, y: py, w: ww, h: wh });
+        didPlace = true;
         break;
       }
     }
 
-    if (!placed_) {
-      // New row
-      const prevBottom =
-        rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : startY;
-      const newY = prevBottom + padding;
-      if (newY + wh > height) break; // Out of space
-      rows.push({ y: newY, rightEdge: ww, height: wh });
-      placed.push({
-        ...word,
-        x: 0,
-        y: newY,
-      });
-    }
-  }
-
-  // Center each row
-  for (const row of rows) {
-    const wordsInRow = placed.filter((w) => w.y === row.y);
-    const totalWidth = row.rightEdge;
-    const offset = (width - totalWidth) / 2;
-    for (const w of wordsInRow) {
-      w.x += offset;
-    }
+    if (!didPlace) continue; // skip word if no space found
   }
 
   return placed;
@@ -112,7 +108,7 @@ export function WordCloud({ terms, theme }: WordCloudProps) {
   const palette = isBloomberg ? BLOOMBERG_PALETTE : APPLE_PALETTE;
 
   const WIDTH = 560;
-  const HEIGHT = 220;
+  const HEIGHT = 300;
 
   const words = useMemo(
     () => computeLayout(terms, WIDTH, HEIGHT, palette),
@@ -145,7 +141,7 @@ export function WordCloud({ terms, theme }: WordCloudProps) {
             <svg
               viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
               className="w-full"
-              style={{ height: HEIGHT }}
+              style={{ height: HEIGHT, maxHeight: HEIGHT }}
             >
               {words.map((word, i) => (
                 <motion.text

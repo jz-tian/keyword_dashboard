@@ -3,9 +3,11 @@ POST /insights
 Body: InsightsRequest
 Returns sentiment, word cloud terms, executive summary, computed metrics.
 """
+from __future__ import annotations
 import hashlib
 import json
 import logging
+from typing import Any, Dict, List
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -21,10 +23,10 @@ class InsightsRequest(BaseModel):
     keyword: str = Field(..., min_length=1, max_length=100)
     region: str = Field("worldwide")
     window: str = Field("7d")
-    corpus: list[str] = Field(default_factory=list)
-    trends: list[dict] = Field(default_factory=list)
-    news: list[dict] = Field(default_factory=list)
-    youtube: list[dict] = Field(default_factory=list)
+    corpus: List[str] = Field(default_factory=list)
+    trends: List[Dict[str, Any]] = Field(default_factory=list)
+    news: List[Dict[str, Any]] = Field(default_factory=list)
+    youtube: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 @router.post("/insights")

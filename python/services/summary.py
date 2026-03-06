@@ -8,6 +8,7 @@ Derives narrative from:
   - Top news headline
   - Top YouTube item
 """
+from __future__ import annotations
 import math
 from typing import Any
 

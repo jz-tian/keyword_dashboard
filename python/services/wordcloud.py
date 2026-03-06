@@ -2,6 +2,7 @@
 Term frequency extraction for word cloud.
 Strips stop words, normalises, and returns ranked (text, value) pairs.
 """
+from __future__ import annotations
 import re
 from collections import Counter
 
@@ -26,15 +27,50 @@ EN_STOP = {
     "http", "https", "www", "com", "net", "org",
 }
 
-# German stop words (compact list)
+# German stop words (comprehensive list)
 DE_STOP = {
-    "der", "die", "das", "ein", "eine", "einen", "dem", "den", "des", "und",
-    "oder", "aber", "in", "auf", "an", "zu", "mit", "von", "aus", "bei", "nach",
-    "vor", "über", "unter", "für", "gegen", "durch", "ohne", "als", "wie",
-    "ist", "sind", "war", "waren", "wird", "werden", "wurde", "wurden", "hat",
-    "haben", "hatte", "hatten", "wird", "ich", "wir", "sie", "er", "es",
-    "nicht", "auch", "so", "noch", "nur", "schon", "dann", "wenn", "weil",
-    "dass", "ob", "mehr", "alle", "beim", "zum", "zur",
+    # Articles
+    "der", "die", "das", "ein", "eine", "einen", "einem", "eines", "einer",
+    "dem", "den", "des",
+    # Pronouns
+    "ich", "du", "er", "sie", "es", "wir", "ihr", "sie", "mich", "dich",
+    "ihn", "uns", "euch", "ihnen", "mir", "dir", "ihm", "man",
+    # Conjunctions
+    "und", "oder", "aber", "denn", "weil", "dass", "ob", "wenn", "als",
+    "damit", "obwohl", "waehrend", "falls", "bevor", "nachdem", "sowie",
+    "sondern", "weder", "noch",
+    # Prepositions
+    "in", "auf", "an", "zu", "mit", "von", "aus", "bei", "nach", "vor",
+    "ueber", "unter", "fuer", "gegen", "durch", "ohne", "um", "bis", "seit",
+    "waehrend", "wegen", "trotz", "statt", "anstatt", "ausser", "zwischen",
+    "neben", "hinter", "uber", "fur",
+    # Verbs (auxiliary/common)
+    "ist", "sind", "war", "waren", "wird", "werden", "wurde", "wurden",
+    "hat", "haben", "hatte", "hatten", "sein", "gewesen", "worden", "sei",
+    "kann", "koennen", "muss", "muessen", "soll", "sollen", "will", "wollen",
+    "darf", "duerfen", "mag", "moegen", "wuerde", "koennte", "sollte",
+    "wollte", "mochte", "gibt", "geben", "macht", "machen", "geht", "gehen",
+    "kommt", "kommen", "sagt", "sagen", "heisst", "heissen", "lassen",
+    # Adverbs & particles
+    "nicht", "auch", "so", "noch", "nur", "schon", "dann", "jetzt", "hier",
+    "da", "dort", "sehr", "ganz", "gar", "mal", "doch", "ja", "nein",
+    "immer", "nie", "oft", "wieder", "viel", "viele", "wenig", "alle",
+    "alles", "mehr", "less", "einmal", "bereits", "nun", "zwar", "jedoch",
+    "dabei", "dazu", "danach", "davor", "darum", "daher", "darauf", "daran",
+    "damit", "deshalb", "deswegen", "trotzdem", "dennoch", "allerdings",
+    "außerdem", "zudem", "weiterhin", "beispielsweise", "etwa", "einfach",
+    "eigentlich", "wirklich", "natürlich", "besonders", "bisher", "bis",
+    "lange", "kurz", "vorn", "hinten", "oben", "unten", "links", "rechts",
+    # Question words
+    "was", "wie", "wann", "wo", "wer", "warum", "welche", "welcher",
+    "welches", "wohin", "woher",
+    # Determiners
+    "dieser", "diese", "dieses", "diesen", "diesem", "jener", "jede",
+    "jeden", "jedem", "jedes", "beide", "solche", "solcher", "kein",
+    "keine", "keinen", "keinem", "keines",
+    # Misc filler
+    "beim", "zum", "zur", "vom", "ins", "ans", "im", "am", "ab",
+    "com", "www", "http", "https", "net", "org",
 }
 
 

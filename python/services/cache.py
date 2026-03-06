@@ -1,6 +1,7 @@
 """
 File-based JSON cache with in-memory fallback and TTL support.
 """
+from __future__ import annotations
 import json
 import os
 import time

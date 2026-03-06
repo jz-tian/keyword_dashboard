@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Exclude CJS packages from webpack bundling so they use native require()
+  // Next.js 14 uses experimental.serverComponentsExternalPackages
+  experimental: {
+    serverComponentsExternalPackages: ["ytsr"],
+  },
   env: {
     PYTHON_API_URL: process.env.PYTHON_API_URL ?? "http://localhost:8000",
   },

@@ -1,6 +1,7 @@
 """
 Google Trends via pytrends with retry/backoff and region/window mapping.
 """
+from __future__ import annotations
 import time
 import random
 import logging
