@@ -130,7 +130,11 @@ export function SentimentChart({ sentiment, theme }: SentimentChartProps) {
                     borderRadius: "var(--radius-card)",
                     fontSize: "11px",
                     fontFamily: "var(--font-sans)",
+                    color: "var(--color-text)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
                   }}
+                  labelStyle={{ color: "var(--color-text-muted)" }}
+                  itemStyle={{ color: "var(--color-text)" }}
                 />
                 <Legend
                   iconType="circle"
