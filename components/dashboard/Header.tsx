@@ -40,13 +40,16 @@ export function Header({ theme, onThemeToggle }: HeaderProps) {
               LIVE
             </span>
           )}
+          <span className="ml-2 hidden text-[11px] text-[var(--color-text-faint)] sm:block">
+            by Jiazheng Tian
+          </span>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
           <ThemeToggle theme={theme} onToggle={onThemeToggle} />
           <a
-            href="https://github.com"
+            href="https://github.com/jz-tian/keyword_dashboard"
             target="_blank"
             rel="noopener noreferrer"
             className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-card)] border border-[var(--color-border)] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
