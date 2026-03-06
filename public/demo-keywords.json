@@ -1,0 +1,12 @@
+{
+  "keywords": [
+    { "term": "Finance", "description": "Global financial markets and economics" },
+    { "term": "Tesla", "description": "Electric vehicles and Elon Musk" },
+    { "term": "Climate", "description": "Climate change and sustainability" },
+    { "term": "Tennis", "description": "Professional tennis tournaments" },
+    { "term": "Bitcoin", "description": "Cryptocurrency and blockchain" },
+    { "term": "AI", "description": "Artificial intelligence and machine learning" },
+    { "term": "Olympics", "description": "Olympic Games news and results" },
+    { "term": "SpaceX", "description": "Space exploration and Starship" }
+  ]
+}
