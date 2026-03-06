@@ -89,13 +89,14 @@ export interface SearchParams {
   window: TimeWindow;
 }
 
-// ── Insights POST body (sent to FastAPI) ─────────────────────
+// ── Insights POST body ────────────────────────────────────────
 export interface InsightsRequestBody {
   keyword: string;
   region: Region;
   window: TimeWindow;
   corpus: string[]; // titles from news + youtube
   trends: TrendPoint[];
+  relatedQueries?: RelatedQuery[];
   news: Array<{ title: string; publishedAt: string; sourceBadge: string }>;
   youtube: Array<{ title: string; publishedAt: string }>;
 }

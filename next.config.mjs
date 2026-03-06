@@ -5,9 +5,6 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["ytsr"],
   },
-  env: {
-    PYTHON_API_URL: process.env.PYTHON_API_URL ?? "http://localhost:8000",
-  },
   images: {
     remotePatterns: [
       {

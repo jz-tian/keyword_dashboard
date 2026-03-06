@@ -68,6 +68,7 @@ export async function fetchDashboardData(params: SearchParams): Promise<Dashboar
     window: params.window,
     corpus,
     trends: trendsData.trends,
+    relatedQueries: trendsData.relatedQueries,
     news: news.map((n) => ({
       title: n.title,
       publishedAt: n.publishedAt,

@@ -2,18 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildCacheKey, getCached, getTtlForWindow, setCached } from "@/lib/cache";
 import { checkRateLimit, getIpFromRequest } from "@/lib/rateLimit";
 import { SearchParamsSchema } from "@/lib/schemas";
-
-const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:8000";
+import { fetchTrends } from "@/lib/googleTrends";
 
 export async function GET(req: NextRequest) {
-  // Rate limiting
   const ip = getIpFromRequest(req);
   const { allowed } = checkRateLimit(ip);
   if (!allowed) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  // Validate query params
   const { searchParams } = req.nextUrl;
   const parse = SearchParamsSchema.safeParse({
     keyword: searchParams.get("keyword") ?? "",
@@ -32,33 +29,20 @@ export async function GET(req: NextRequest) {
   const cacheKey = buildCacheKey("trends", keyword, region, window);
   const ttl = getTtlForWindow(window);
 
-  // Cache hit
   const cached = getCached(cacheKey);
   if (cached) {
-    return NextResponse.json(cached, {
-      headers: { "X-Cache": "HIT" },
-    });
+    return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
   }
 
-  // Proxy to FastAPI
   try {
-    const url = `${PYTHON_API_URL}/trends?keyword=${encodeURIComponent(keyword)}&region=${region}&window=${window}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-
-    if (!res.ok) {
-      throw new Error(`FastAPI returned ${res.status}`);
-    }
-
-    const data = await res.json();
+    const data = await fetchTrends(keyword, region, window);
     setCached(cacheKey, data, ttl);
-
-    return NextResponse.json(data, {
-      headers: { "X-Cache": "MISS" },
-    });
+    return NextResponse.json(data, { headers: { "X-Cache": "MISS" } });
   } catch (err) {
     console.error("[/api/trends] Error:", err);
-    // Return empty graceful fallback
-    const fallback = { trends: [], interestByRegion: [], relatedQueries: [] };
-    return NextResponse.json(fallback, { status: 200 });
+    return NextResponse.json(
+      { trends: [], interestByRegion: [], relatedQueries: [] },
+      { status: 200 }
+    );
   }
 }

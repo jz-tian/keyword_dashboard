@@ -2,21 +2,24 @@
  * POST /api/insights
  * Body: InsightsRequestBody
  *
- * Proxies to FastAPI /insights endpoint which handles:
- *  - Sentiment analysis (EN/DE)
- *  - Word cloud term extraction
- *  - Deterministic executive summary
- *  - KPI metrics (trendScore, momentum, volatility, etc.)
+ * Pure TypeScript NLP — no Python sidecar required.
+ * Handles sentiment analysis, word cloud extraction,
+ * executive summary, and KPI metrics entirely in Node.js.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { buildCacheKey, getCached, getTtlForWindow, setCached } from "@/lib/cache";
 import { checkRateLimit, getIpFromRequest } from "@/lib/rateLimit";
 import { SearchParamsSchema } from "@/lib/schemas";
+import { analyzeSentiment } from "@/lib/sentiment";
+import { extractTerms, buildSummary } from "@/lib/nlp";
+import {
+  computeTrendScore,
+  computeMomentum,
+  computeVolatility,
+  computeFreshness,
+} from "@/lib/utils";
 import type { InsightsRequestBody, InsightsResponse } from "@/lib/types";
 
-const PYTHON_API_URL = process.env.PYTHON_API_URL ?? "http://localhost:8000";
-
-/** Compute a short deterministic hash of the corpus for cache keying */
 function corpusHash(corpus: string[]): string {
   const str = corpus.slice(0, 30).join("|");
   let hash = 0;
@@ -51,8 +54,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { keyword, region, window } = parse.data;
-  const cKey = `${corpusHash(body.corpus ?? [])}`;
-  const cacheKey = buildCacheKey(`insights_${cKey}`, keyword, region, window);
+  const cacheKey = buildCacheKey(
+    `insights_${corpusHash(body.corpus ?? [])}`,
+    keyword,
+    region,
+    window
+  );
   const ttl = getTtlForWindow(window);
 
   const cached = getCached<InsightsResponse>(cacheKey);
@@ -60,46 +67,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } });
   }
 
-  try {
-    const res = await fetch(`${PYTHON_API_URL}/insights`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        keyword,
-        region,
-        window,
-        corpus: body.corpus ?? [],
-        trends: body.trends ?? [],
-        news: body.news ?? [],
-        youtube: body.youtube ?? [],
-      }),
-      signal: AbortSignal.timeout(30_000),
-    });
+  const corpus = body.corpus ?? [];
+  const trends = body.trends ?? [];
+  const relatedQueries = body.relatedQueries ?? [];
+  const news = body.news ?? [];
+  const youtube = body.youtube ?? [];
 
-    if (!res.ok) {
-      throw new Error(`FastAPI insights returned ${res.status}`);
-    }
+  // Language detection: use German NLP for Germany region
+  const lang = region === "germany" ? "de" : "en";
 
-    const data = (await res.json()) as InsightsResponse;
-    setCached(cacheKey, data, ttl);
-    return NextResponse.json(data, { headers: { "X-Cache": "MISS" } });
-  } catch (err) {
-    console.error("[/api/insights] Error:", err);
+  // Sentiment analysis
+  const sentiment = analyzeSentiment(corpus, lang);
 
-    // Graceful fallback — compute basic metrics client-side friendly values
-    const fallback: InsightsResponse = {
-      sentiment: { positive: 0, neutral: 1, negative: 0 },
-      wordCloudTerms: [],
-      executiveSummary:
-        `Data for "${keyword}" could not be fully analyzed. ` +
-        "The Python sidecar may be unavailable. " +
-        "Start it with: cd python && uvicorn main:app --port 8000",
-      trendScore: 0,
-      momentum: 0,
-      volatility: 0,
-      sourceDiversityIndex: 0,
-      freshnessScore: 0,
-    };
-    return NextResponse.json(fallback, { status: 200 });
+  // Word cloud
+  const wordCloudTerms = extractTerms(corpus, lang);
+
+  // Executive summary
+  const executiveSummary = buildSummary(
+    keyword,
+    trends,
+    relatedQueries,
+    sentiment,
+    news,
+    youtube
+  );
+
+  // KPI metrics
+  const trendValues = trends.map((t) => t.value ?? 0);
+  const trendScore = computeTrendScore(trendValues);
+  const momentum = computeMomentum(trendValues);
+  const volatility = computeVolatility(trendValues);
+
+  // Source diversity
+  const sources = new Set<string>();
+  for (const n of news) {
+    const badge = (n as { sourceBadge?: string }).sourceBadge ?? "";
+    if (badge) sources.add(badge);
   }
+  if (youtube.length) sources.add("YouTube");
+
+  // Freshness
+  const allDates = [...news, ...youtube]
+    .map((i) => (i as { publishedAt?: string }).publishedAt ?? "")
+    .filter(Boolean);
+  const freshnessScore = computeFreshness(allDates);
+
+  const data: InsightsResponse = {
+    sentiment,
+    wordCloudTerms,
+    executiveSummary,
+    trendScore,
+    momentum,
+    volatility,
+    sourceDiversityIndex: sources.size,
+    freshnessScore,
+  };
+
+  setCached(cacheKey, data, ttl);
+  return NextResponse.json(data, { headers: { "X-Cache": "MISS" } });
 }
