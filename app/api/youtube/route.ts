@@ -7,7 +7,6 @@
  * Returns normalized YouTubeItem[].
  */
 import { NextRequest, NextResponse } from "next/server";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const ytsr = require("ytsr") as {
   (query: string, options: { limit: number; safeSearch: boolean }): Promise<{
     items: Array<{
