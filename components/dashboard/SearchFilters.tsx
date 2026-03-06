@@ -59,9 +59,9 @@ export function SearchFilters({
   };
 
   return (
-    <aside className="flex flex-col gap-4">
+    <aside className="flex flex-col gap-3 lg:gap-4">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {/* Keyword */}
+        {/* Keyword — always full width */}
         <div className="flex flex-col gap-1.5">
           <label className="card-title !mb-0">Keyword</label>
           <div className="relative">
@@ -76,41 +76,44 @@ export function SearchFilters({
           </div>
         </div>
 
-        {/* Region */}
-        <div className="flex flex-col gap-1.5">
-          <label className="card-title !mb-0">Region</label>
-          <Select value={region} onValueChange={(v) => setRegion(v as Region)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {REGIONS.map((r) => (
-                <SelectItem key={r.value} value={r.value}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Region + Time Window — side by side on mobile, stacked on desktop */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+          {/* Region */}
+          <div className="flex flex-col gap-1.5">
+            <label className="card-title !mb-0">Region</label>
+            <Select value={region} onValueChange={(v) => setRegion(v as Region)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REGIONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Time window — segmented control */}
-        <div className="flex flex-col gap-1.5">
-          <label className="card-title !mb-0">Time Window</label>
-          <div className="flex rounded-[var(--radius-card)] border border-[var(--color-border)] overflow-hidden">
-            {TIME_WINDOWS.map((w) => (
-              <button
-                key={w.value}
-                type="button"
-                onClick={() => setWindow(w.value)}
-                className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
-                  window === w.value
-                    ? "bg-[var(--color-accent)] text-[var(--color-bg)]"
-                    : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                }`}
-              >
-                {w.label}
-              </button>
-            ))}
+          {/* Time window — segmented control */}
+          <div className="flex flex-col gap-1.5">
+            <label className="card-title !mb-0">Time Window</label>
+            <div className="flex rounded-[var(--radius-card)] border border-[var(--color-border)] overflow-hidden">
+              {TIME_WINDOWS.map((w) => (
+                <button
+                  key={w.value}
+                  type="button"
+                  onClick={() => setWindow(w.value)}
+                  className={`flex-1 py-1.5 text-xs font-medium transition-colors ${
+                    window === w.value
+                      ? "bg-[var(--color-accent)] text-[var(--color-bg)]"
+                      : "bg-[var(--color-surface-2)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+                  }`}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

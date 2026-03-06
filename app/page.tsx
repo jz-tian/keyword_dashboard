@@ -58,14 +58,14 @@ export default function HomePage() {
       <Header theme={theme} onThemeToggle={handleThemeToggle} />
 
       <div
-        className={`flex flex-1 gap-0 ${isBloomberg ? "divide-x divide-[var(--color-border)]" : ""}`}
+        className={`flex flex-col lg:flex-row flex-1 gap-0 ${isBloomberg ? "lg:divide-x lg:divide-[var(--color-border)]" : ""}`}
       >
-        {/* Sidebar */}
+        {/* Sidebar — full width on mobile, fixed sidebar on desktop */}
         <div
-          className={`shrink-0 ${
+          className={`w-full lg:shrink-0 ${
             isBloomberg
-              ? "w-56 border-r border-[var(--color-border)] bg-[var(--color-surface)] p-3"
-              : "w-72 p-4"
+              ? "border-b lg:border-b-0 lg:border-r border-[var(--color-border)] bg-[var(--color-surface)] p-3 lg:w-56"
+              : "p-4 lg:w-72 border-b lg:border-b-0 border-[var(--color-border)]"
           }`}
         >
           <SearchFilters
@@ -80,7 +80,7 @@ export default function HomePage() {
         <main className="min-w-0 flex-1 overflow-auto">
           <div
             className={`flex flex-col gap-4 ${
-              isBloomberg ? "p-3" : "p-6"
+              isBloomberg ? "p-3" : "p-4 lg:p-6"
             }`}
           >
             {/* Demo banner */}
