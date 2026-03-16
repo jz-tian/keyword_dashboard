@@ -8,7 +8,7 @@ const BASE = "https://trends.google.com";
 
 const UA_HEADERS: Record<string, string> = {
   "User-Agent":
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36",
   "Accept-Language": "en-US,en;q=0.9",
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 };
@@ -37,12 +37,12 @@ function parseGoogleJson(text: string): unknown {
 
 async function getCookies(): Promise<string> {
   try {
-    const res = await fetch(BASE, {
+    const res = await fetch(`${BASE}/trends/explore`, {
       headers: UA_HEADERS,
+      redirect: "manual",
       signal: AbortSignal.timeout(5_000),
     });
     const raw = res.headers.get("set-cookie") ?? "";
-    // Split on commas that start a new cookie (name=value pattern)
     return raw
       .split(/,(?=\s*\w+=)/)
       .map((c) => c.split(";")[0].trim())
